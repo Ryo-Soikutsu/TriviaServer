@@ -1,0 +1,16 @@
+FROM python:3.12-alpine
+WORKDIR /opt/triviaserver
+
+RUN apk update && apk add --no-cache socat && apk upgrade && apk cache clean
+
+COPY . .
+
+RUN addgroup -S trivia && adduser -S trivia -G trivia
+RUN chown -R trivia:trivia /opt/triviaserver
+USER trivia
+
+EXPOSE 1337
+
+ENV FLAG=YOUR_FLAG_HERE
+
+CMD ["socat", "-dd", "TCP-LISTEN:1337,fork,reuseaddr", "EXEC:python3 server.py"]

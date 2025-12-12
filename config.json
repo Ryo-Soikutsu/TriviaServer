@@ -1,0 +1,15 @@
+{
+    "name": "trivia-server",
+    "chall": "challenge-name",
+    "questions": [
+      {
+        "question": "Example question 1",
+        "answer": "Example answer 1"
+      },
+      {
+        "question": "Example question 2",
+        "answer": "Example answer 2",
+        "hint": "Example hint"
+      }
+    ]
+}
