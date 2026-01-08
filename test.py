@@ -7,7 +7,7 @@ import requests
 # ==============================
 # CONFIGURATION
 # ==============================
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://webhook.northland.local/")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://webhook.site/28a23fce-222a-4510-8750-4a63cda9f61e")
 
 # Attempt counters
 total_attempts = 0
@@ -53,6 +53,15 @@ def send_webhook(status: str):
         return
     except Exception:
         return
+
+def adv_input(prompt): 
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+
+    data = sys.stdin.readline()
+    if data == "":
+        raise EOFError
+    return data.rstrip("\n")
 
 # ==============================
 # BANNERS
@@ -100,13 +109,13 @@ try:
 
         print(QUESTIONS_BANNER.format(i + 1, total_questions, question["question"], hint))
 
-        guess = input("\033[1;32m> \033[0m")
+        guess = adv_input("\033[1;32m> \033[0m")
         total_attempts += 1
 
         while guess != question["answer"]:
             invalid_attempts += 1
             print(COLOR_RED.format("Answer incorrect, please try again"))
-            guess = input("\033[1;32m> \033[0m")
+            guess = adv_input("\033[1;32m> \033[0m")
             total_attempts += 1
 
         valid_attempts += 1
@@ -120,11 +129,13 @@ try:
         print(COLOR_RED.format(
             "An error has occurred when trying to retrieve the flag. Please open a ticket in the Discord server for help."
         ))
+        print("Error detected, sending webhook")
         send_webhook("ERR_RETRIEVE_FLAG")
         sys.exit(0)
     else:
         print(COLOR_LIGHT_GRAY.format(f"Here is your flag: {COLOR_YELLOW.format(flag)}"))
-
+    
+    print("Success detected, sending webhook")
     send_webhook("SUCCESS")
     sys.exit(0)
 

@@ -2,6 +2,7 @@ FROM python:3.12-alpine
 WORKDIR /opt/triviaserver
 
 RUN apk update && apk add --no-cache socat && apk upgrade && apk cache clean
+RUN pip install --no-cache-dir requests
 
 COPY . .
 
@@ -13,4 +14,4 @@ EXPOSE 1337
 
 ENV FLAG=YOUR_FLAG_HERE
 
-CMD ["socat", "-dd", "TCP-LISTEN:1337,fork,reuseaddr", "EXEC:python3 server.py"]
+CMD ["socat", "-dd", "TCP-LISTEN:1337,fork,reuseaddr", "EXEC:python3 test.py"]
