@@ -13,6 +13,7 @@ WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://webhook.site/28a23fce-222a-4510-
 total_attempts = 0
 valid_attempts = 0
 invalid_attempts = 0
+questions = []
 
 # Try to determine client IP (works well behind socat/ncat/inetd)
 USER_IP = (
@@ -45,7 +46,8 @@ def send_webhook(status: str):
         "total_attempts": total_attempts,
         "valid_attempts": valid_attempts,
         "invalid_attempts": invalid_attempts,
-        "status": status
+        "status": status,
+        "questions": questions
     }
 
     try:
@@ -100,6 +102,8 @@ try:
     total_questions = len(config["questions"])
 
     for i, question in enumerate(config["questions"]):
+        valid = 0
+        invalid = 0
         hint = ""
         if question.get("hint") is not None:
             hint = question["hint"]
@@ -110,15 +114,25 @@ try:
         print(QUESTIONS_BANNER.format(i + 1, total_questions, question["question"], hint))
 
         guess = adv_input("\033[1;32m> \033[0m")
-        total_attempts += 1
+        
 
         while guess != question["answer"]:
-            invalid_attempts += 1
+            invalid += 1
             print(COLOR_RED.format("Answer incorrect, please try again"))
             guess = adv_input("\033[1;32m> \033[0m")
-            total_attempts += 1
 
-        valid_attempts += 1
+        valid += 1
+        total_attempts += valid + invalid
+        valid_attempts += valid
+        invalid_attempts += invalid
+        
+        question_attempt = {
+            "id": i + 1,
+            "valid": valid,
+            "invalid": invalid
+        }
+        questions.append(question_attempt)
+
         print(COLOR_GREEN.format("Answer correct! Next question..."))
 
     print("\n")
