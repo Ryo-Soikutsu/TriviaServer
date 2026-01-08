@@ -1,7 +1,30 @@
 import os
 import json
 import string
+import sys
+import requests
 
+# ==============================
+# CONFIGURATION
+# ==============================
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://webhook.site/28a23fce-222a-4510-8750-4a63cda9f61e")
+
+# Attempt counters
+total_attempts = 0
+valid_attempts = 0
+invalid_attempts = 0
+
+# Try to determine client IP (works well behind socat/ncat/inetd)
+USER_IP = (
+    os.getenv("REMOTE_ADDR")
+    or os.getenv("SOCAT_PEERADDR")
+    or os.getenv("NCAT_REMOTE_ADDR")
+    or "unknown"
+)
+
+# ==============================
+# OUTPUT FORMATTING
+# ==============================
 COLOR_RED = "\033[91m{}\033[00m"
 COLOR_GREEN = "\033[92m{}\033[00m"
 COLOR_YELLOW = "\033[93m{}\033[00m"
@@ -12,6 +35,37 @@ COLOR_LIGHT_GRAY = "\033[97m{}\033[00m"
 COLOR_BLACK = "\033[98m{}\033[00m"
 
 REPLACE_CHARS = string.ascii_letters + string.digits
+
+# ==============================
+# WEBHOOK FUNCTION
+# ==============================
+def send_webhook(status: str):
+    payload = {
+        "ip": USER_IP,
+        "total_attempts": total_attempts,
+        "valid_attempts": valid_attempts,
+        "invalid_attempts": invalid_attempts,
+        "status": status
+    }
+
+    try:
+        requests.post(WEBHOOK_URL, json=payload, timeout=5)
+        return
+    except Exception:
+        return
+
+def adv_input(prompt): 
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+
+    data = sys.stdin.readline()
+    if data == "":
+        raise EOFError
+    return data.rstrip("\n")
+
+# ==============================
+# BANNERS
+# ==============================
 CONNECTION_BANNER = """
 \033[1;34m┌────────────────────────────────────────────────┐\033[0m
 \033[1;34m│\033[1;33m        ____       _                            \033[1;34m│\033[0m
@@ -35,34 +89,58 @@ QUESTIONS_BANNER = """
 \033[1;90mHint:\033[0m \033[1;33m{}\033[0m
 """
 
-with open("config.json", "r") as f:
-    config = json.load(f)
+# ==============================
+# MAIN EXECUTION
+# ==============================
+try:
+    with open("config.json", "r") as f:
+        config = json.load(f)
 
-print(CONNECTION_BANNER)
-total_questions = len(config["questions"])
-for i, question in enumerate(config["questions"]):
-    hint = ""
-    if question.get("hint") is not None:
-        hint = question["hint"]
+    print(CONNECTION_BANNER)
+    total_questions = len(config["questions"])
+
+    for i, question in enumerate(config["questions"]):
+        hint = ""
+        if question.get("hint") is not None:
+            hint = question["hint"]
+        else:
+            for char in question["answer"]:
+                hint += "*" if char in REPLACE_CHARS else char
+
+        print(QUESTIONS_BANNER.format(i + 1, total_questions, question["question"], hint))
+
+        guess = adv_input("\033[1;32m> \033[0m")
+        total_attempts += 1
+
+        while guess != question["answer"]:
+            invalid_attempts += 1
+            print(COLOR_RED.format("Answer incorrect, please try again"))
+            guess = adv_input("\033[1;32m> \033[0m")
+            total_attempts += 1
+
+        valid_attempts += 1
+        print(COLOR_GREEN.format("Answer correct! Next question..."))
+
+    print("\n")
+    print(COLOR_LIGHT_GRAY.format("All questions answered correctly. Assignment complete."))
+
+    flag = os.getenv("FLAG")
+    if not flag:
+        print(COLOR_RED.format(
+            "An error has occurred when trying to retrieve the flag. Please open a ticket in the Discord server for help."
+        ))
+        print("Error detected, sending webhook")
+        send_webhook("ERR_RETRIEVE_FLAG")
+        sys.exit(0)
     else:
-        for char in question["answer"]:
-            if char in REPLACE_CHARS:
-                hint += "*"
-            else:
-                hint += char
-            
-    print(QUESTIONS_BANNER.format(i+1, total_questions, question["question"], hint))
-    guess = input("\033[1;32m> \033[0m")
-    while guess != question["answer"]:
-        print(COLOR_RED.format("Answer incorrect, please try again"))
-        guess = input("\033[1;32m> \033[0m")
+        print(COLOR_LIGHT_GRAY.format(f"Here is your flag: {COLOR_YELLOW.format(flag)}"))
     
-    print(COLOR_GREEN.format("Answer correct! Next question..."))
+    print("Success detected, sending webhook")
+    send_webhook("SUCCESS")
+    sys.exit(0)
 
-print("\n")
-print(COLOR_LIGHT_GRAY.format("All questions answered correctly. Assignment complete."))
-flag = os.getenv("FLAG")
-if not flag:
-    print(COLOR_RED.format("An error has occurred when trying to retrieve the flag. Please open a ticket in the Discord server for help."))
-else:  
-    print(COLOR_LIGHT_GRAY.format(f"Here is your flag: {COLOR_YELLOW.format(flag)}"))
+except (EOFError, BrokenPipeError, ConnectionResetError, KeyboardInterrupt):
+    print("Interrupt detected, sending webhook")
+    send_webhook("ERR_INTERRUPT")
+    sys.exit(0)
+

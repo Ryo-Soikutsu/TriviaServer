@@ -14,4 +14,4 @@ EXPOSE 1337
 
 ENV FLAG=YOUR_FLAG_HERE
 
-CMD ["socat", "-dd", "TCP-LISTEN:1337,fork,reuseaddr", "EXEC:python3 test.py"]
+CMD ["socat", "-dd", "TCP-LISTEN:1337,fork,reuseaddr", "EXEC:python3 server.py"]
